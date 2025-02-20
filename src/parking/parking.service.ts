@@ -1,5 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InvalidSlotsException } from './constants/exceptions';
+import { Car } from './interfaces/car.interface';
 import { ParkingSlot } from './interfaces/parking-slot.interface';
 
 @Injectable()
@@ -52,5 +58,96 @@ export class ParkingService {
       `Successfully expanded parking lot. New total: ${this.total_slots} slots`,
     );
     return { total_slot: this.total_slots };
+  }
+
+  parkCar(car: Car): { allocated_slot_number: number } {
+    if (!car.registration_number || !car.color) {
+      throw new BadRequestException(
+        'Car registration number and color are required',
+      );
+    }
+
+    // Check if car already parked
+    const existingCar = this.parking_slots.find(
+      (slot) => slot.car?.registration_number === car.registration_number,
+    );
+    if (existingCar) {
+      throw new BadRequestException('Car already parked');
+    }
+
+    // Find nearest empty slot
+    const slot = this.parking_slots.find((slot) => !slot.is_occupied);
+    if (!slot) {
+      throw new BadRequestException('Parking lot is full');
+    }
+
+    slot.car = car;
+    slot.is_occupied = true;
+
+    this.logger.log(
+      `Car with registration number ${car.registration_number} parked in slot ${slot.slot_number}`,
+    );
+
+    return { allocated_slot_number: slot.slot_number };
+  }
+
+  getRegistrationNumbersByColor(color: string): string[] {
+    const cars = this.parking_slots
+      .filter(
+        (slot) =>
+          slot.is_occupied &&
+          slot.car?.color.toLowerCase() === color.toLowerCase(),
+      )
+      .map((slot) => slot.car!.registration_number);
+
+    if (!cars.length) {
+      throw new NotFoundException(`No cars found with color ${color}`);
+    }
+
+    this.logger.log(`Found ${cars.length} cars with color ${color}`);
+
+    return cars;
+  }
+
+  getSlotNumbersByColor(color: string): string[] {
+    const slots = this.parking_slots
+      .filter(
+        (slot) =>
+          slot.is_occupied &&
+          slot.car?.color.toLowerCase() === color.toLowerCase(),
+      )
+      .map((slot) => slot.slot_number.toString());
+
+    this.logger.log(`Found ${slots.length} slots with color ${color}`);
+
+    if (!slots.length) {
+      throw new NotFoundException(`No slots found with cars of color ${color}`);
+    }
+
+    this.logger.log(`Found ${slots.length} slots with color ${color}`);
+
+    return slots;
+  }
+
+  getSlotByRegistrationNumber(registrationNumber: string): {
+    slot_number: number;
+  } {
+    const slot = this.parking_slots.find(
+      (slot) =>
+        slot.is_occupied &&
+        slot.car?.registration_number === registrationNumber,
+    );
+
+    if (!slot) {
+      throw new NotFoundException(
+        `Car with registration number ${registrationNumber} not found`,
+      );
+    }
+
+    this.logger.log(
+      `Found slot ${slot.slot_number} for car with registration number ${registrationNumber}`,
+    );
+
+    return { slot_number: slot.slot_number };
   }
 }

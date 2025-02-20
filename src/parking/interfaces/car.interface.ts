@@ -1,4 +1,4 @@
 export interface Car {
-  registrationNumber: string;
+  registration_number: string;
   color: string;
 }
