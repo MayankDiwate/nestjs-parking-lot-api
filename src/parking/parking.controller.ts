@@ -52,4 +52,18 @@ export class ParkingController {
   ) {
     return this.parkingService.getSlotByRegistrationNumber(registrationNumber);
   }
+
+  @Post('clear')
+  @HttpCode(HttpStatus.OK)
+  clearSlot(
+    @Body('slot_number') slotNumber?: number,
+    @Body('car_registration_no') carRegistrationNumber?: string,
+  ) {
+    return this.parkingService.clearSlot(slotNumber, carRegistrationNumber);
+  }
+
+  @Get('status')
+  getStatus() {
+    return this.parkingService.getStatus();
+  }
 }

@@ -7,6 +7,7 @@ import {
 import { InvalidSlotsException } from './constants/exceptions';
 import { Car } from './interfaces/car.interface';
 import { ParkingSlot } from './interfaces/parking-slot.interface';
+import { ParkingStatus } from './interfaces/parking-status.interface';
 
 @Injectable()
 export class ParkingService {
@@ -149,5 +150,58 @@ export class ParkingService {
     );
 
     return { slot_number: slot.slot_number };
+  }
+
+  clearSlot(
+    slotNumber?: number,
+    carRegistrationNumber?: string,
+  ): { freed_slot_number: number } {
+    let slot: ParkingSlot | undefined;
+
+    if (slotNumber) {
+      slot = this.parking_slots.find((s) => s.slot_number === slotNumber);
+      if (!slot) {
+        throw new NotFoundException(`Slot number ${slotNumber} not found`);
+      }
+      if (!slot.is_occupied) {
+        throw new BadRequestException(
+          `Slot number ${slotNumber} is already empty`,
+        );
+      }
+    } else if (carRegistrationNumber) {
+      slot = this.parking_slots.find(
+        (s) => s.car?.registration_number === carRegistrationNumber,
+      );
+      if (!slot) {
+        throw new NotFoundException(
+          `Car with registration number ${carRegistrationNumber} not found`,
+        );
+      }
+    } else {
+      throw new BadRequestException(
+        'Either slot number or car registration number is required',
+      );
+    }
+
+    slot.car = undefined;
+    slot.is_occupied = false;
+
+    return { freed_slot_number: slot.slot_number };
+  }
+
+  getStatus(): ParkingStatus[] {
+    const occupiedSlots = this.parking_slots
+      .filter((slot) => slot.is_occupied)
+      .map((slot) => ({
+        slot_no: slot.slot_number,
+        registration_no: slot.car!.registration_number,
+        color: slot.car!.color,
+      }));
+
+    if (!occupiedSlots.length) {
+      throw new NotFoundException('No cars are currently parked');
+    }
+
+    return occupiedSlots;
   }
 }
