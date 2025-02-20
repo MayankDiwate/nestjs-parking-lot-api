@@ -1,6 +1,7 @@
 import type { Car } from './car.interface';
 
 export interface ParkingSlot {
-  number: number;
-  car: Car | null;
+  slot_number: number;
+  car?: Car;
+  is_occupied: boolean;
 }
